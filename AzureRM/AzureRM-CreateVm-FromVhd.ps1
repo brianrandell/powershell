@@ -8,6 +8,7 @@ Login-AzureRmAccount;
 
 ## Set Variables
 # You must fix all of these variables
+# Get-AzureRMLocation will get you the valid $rgLoc and $dnsLoc values for your sub
 $rgName = 'resourceGroupName';
 $rgLoc = 'East US 2';
 $pre = 'abc';
@@ -15,8 +16,20 @@ $vmName = 'vmname';
 $osDiskVhdUri = 'https://account.blob.core.windows.net/folder/vm.vhd';
 $vmDns = "vmdnsname";
 $dnsLoc = 'eastus2';
+
+# You must create the diagnostics storage account before running the script. 
+# If you want it in the same resource group, you would need to add:
+# New-AzureRmStorageAccount -ResourceGroupName $rgName -Name $diagStorRgName -Location $rgLoc -SkuName Standard_LRS -Kind StorageV1
+# And modify this line:
+# Set-AzureRmVMBootDiagnostics -VM $vmConfig -Enable -ResourceGroupName $rgName -StorageAccountName $diagStorageAccountName;
+$diagStorRgName = "storageAccountName resourceGroupName"
 $diagStorageAccountName = 'storageAccountName';
 
+# Make sure you use a valid size for your subscription & location
+# Use Get-AzureRmVMSize -Location $rgLoc
+$vmSize = 'Standard_E4s_v3';
+
+# Start Script
 # Use Test-AzureRmDnsAvailability to check Dns Name
 $goodDns = Test-AzureRmDnsAvailability -DomainNameLabel $vmDns -Location $dnsLoc;
 
@@ -40,7 +53,7 @@ else {
 
     # Get a public IP address and define a DNS name
     $pipName = $pre + 'pip';
-    $pip = New-AzureRmPublicIpAddress -Name $pipName; -ResourceGroupName $rgName -Location $rgLoc -DomainNameLabel $vmDns -AllocationMethod Static -IdleTimeoutInMinutes 4 
+    $pip = New-AzureRmPublicIpAddress -Name $pipName -ResourceGroupName $rgName -Location $rgLoc -DomainNameLabel $vmDns -AllocationMethod Static -IdleTimeoutInMinutes 4 
 
     # Define an inbound network security group rule for port 3389 (Remote Desktop)
     $nsgRuleName = $pre + 'nsrRDP';
@@ -55,9 +68,7 @@ else {
     $nic = New-AzureRmNetworkInterface -Name $nicName -ResourceGroupName $rgName -Location $rgLoc -SubnetId $vnet.Subnets[0].Id -PublicIpAddressId $pip.Id -NetworkSecurityGroupId $nsg.Id;
 
     # Define a virtual machine configuration
-    # Make sure you use a valid size for your subscription & location
-    $vmSize = 'Standard_DS12_v2_Promo';
-
+    
     # Configure Disk
     $osDiskName = $vmname + '_osDisk';
     $osDiskCaching = 'ReadWrite';
@@ -66,7 +77,7 @@ else {
     $vmConfig = New-AzureRmVMConfig -VMName $vmName -VMSize $vmSize | Add-AzureRmVMNetworkInterface -Id $nic.Id;
     $vmConfig = Set-AzureRmVMOSDisk -VM $vmConfig -VhdUri $osDiskVhdUri -name $osDiskName -CreateOption attach -Windows -Caching $osDiskCaching;
 
-    Set-AzureRmVMBootDiagnostics -VM $vmConfig -Enable -ResourceGroupName $rgName -StorageAccountName $diagStorageAccountName;
+    Set-AzureRmVMBootDiagnostics -VM $vmConfig -Enable -ResourceGroupName $diagStorRgName -StorageAccountName $diagStorageAccountName;
 
     # Create the Vm; the Vm will be started when done
     $userName = 'Brian'
