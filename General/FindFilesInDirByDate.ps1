@@ -10,7 +10,7 @@ $filter = '*.xl*'
 
 # Assumes MM/DD/YY date format
 $startDate = '1/20/18'
-$endDate = '11/27/15'
+$endDate = '4/1/18'
 
 Get-ChildItem -Path $root -Filter $filter -Recurse |
     Where-Object {
